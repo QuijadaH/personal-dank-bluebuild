@@ -7,6 +7,11 @@ base-image: ghcr.io/quijadah/dank-blue-build-hyprland
 image-version: latest
 
 modules:
+  - type: files
+    files:
+      - source: system
+        destination: /
+        
   - type: dnf
     repos:
       copr:
@@ -26,12 +31,7 @@ modules:
         - yazi
 
   - from-file: ./development-modules.yml
-
-  - type: files
-    files:
-      - source: system
-        destination: /  
-
+  
   - type: brew
     nofile-limits: true
     brew-analytics: false
