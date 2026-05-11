@@ -24,8 +24,14 @@ mkdir -p /var/mnt/WD-1TB@STEAM
 mkdir -p /var/mnt/SAMSUNG@STORAGE
 
 for entry in "${ENTRIES[@]}"; do
-  echo "$entry" >> "$FSTAB"
-  echo "Added: $entry"
+  if grep -Fxq -- "$entry" "$FSTAB"; then
+    echo "Skipping (already exists): $entry"
+  else
+    echo "$entry" >> "$FSTAB"
+    echo "Added: $entry"
+  fi
 done
+
+systemctl daemon-reload
 
 echo "Done updating /etc/fstab"
