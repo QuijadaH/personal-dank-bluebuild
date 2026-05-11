@@ -7,51 +7,85 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi   
 
-if ! blkid -L WD-1TB >/dev/null; then
-  echo "Filesystem label WD-1TB not found."
-  exit 1
-fi
-
 FSTAB="/etc/fstab"
 cp "$FSTAB" "${FSTAB}.bak.$(date +%F-%H%M%S)"
 
-SAMSUNG_UUID=$(findmnt -n -o UUID /var)
-TEMP_MOUNTPOINT=$(mktemp -d -p /tmp mnt.XXXXXX)
-mount -o subvolid=5 UUID=${SAMSUNG_UUID} ${TEMP_MOUNTPOINT}
-trap 'umount "$TEMP_MOUNTPOINT" &>/dev/null || true; rmdir "$TEMP_MOUNTPOINT" &>/dev/null || true' EXIT   
+WD_1TB_SUCCESS=false
+SAMSUNG_SUCCESS=false
 
-if btrfs subvolume show "${TEMP_MOUNTPOINT}"/storage &> /dev/null; then
-    echo "Btrfs subvolume '/storage' already exists in UUID ${SAMSUNG_UUID}."
+if ! blkid -L "WD-1TB" >/dev/null 2>&1; then
+  echo "Cannot find WD-1TB. Skipping entries for WD-1TB."
 else
-    echo "Creating Btrfs subvolume '/storage' in UUID ${SAMSUNG_UUID}..."
-    btrfs subvolume create ${TEMP_MOUNTPOINT}/storage
+  mkdir -p /var/mnt/WD-1TB@FILES
+  mkdir -p /var/mnt/WD-1TB@SEEDS
+  mkdir -p /var/mnt/WD-1TB@STEAM
+
+  ENTRIES=(
+  "LABEL=WD-1TB  /var/mnt/WD-1TB@FILES  btrfs  subvol=/@files,noatime,X-mount.mkdir,compress=zstd:3,autodefrag,space_cache=v2  0 0"
+  "LABEL=WD-1TB  /var/mnt/WD-1TB@SEEDS  btrfs  subvol=/@seeds,noatime,X-mount.mkdir,compress=zstd:3,autodefrag,space_cache=v2  0 0"
+  "LABEL=WD-1TB  /var/mnt/WD-1TB@STEAM  btrfs  subvol=/@steam,noatime,X-mount.mkdir,autodefrag,space_cache=v2  0 0"
+  )
+
+  for entry in "${ENTRIES[@]}"; do
+    device=$(awk '{print $1}' <<< "$entry")
+    mountpoint=$(awk '{print $2}' <<< "$entry")
+
+    if grep -Fq "${device}  ${mountpoint}" "$FSTAB"; then
+      echo "'${device} ${mountpoint}' already exists in $FSTAB"
+    else
+      echo "$entry" >> "$FSTAB"
+    fi
+  done
+
+  WD_1TB_SUCCESS=true
 fi
 
-umount "${TEMP_MOUNTPOINT}"
-rmdir "${TEMP_MOUNTPOINT}"
+if findmnt -t btrfs /var >/dev/null 2>&1; then   
+	SAMSUNG_UUID=$(findmnt -no UUID -T /var)
+  TEMP_MOUNTPOINT=$(mktemp -d)
+  mount -o subvolid=5 UUID="${SAMSUNG_UUID}" "${TEMP_MOUNTPOINT}"
+  trap 'umount "$TEMP_MOUNTPOINT" 2>/dev/null || true; rmdir "$TEMP_MOUNTPOINT" 2>/dev/null || true' EXIT   
 
-mkdir -p /var/mnt/WD-1TB@FILES
-mkdir -p /var/mnt/WD-1TB@SEEDS
-mkdir -p /var/mnt/WD-1TB@STEAM
-mkdir -p /var/mnt/SAMSUNG@STORAGE
-
-ENTRIES=(
-"LABEL=WD-1TB  /var/mnt/WD-1TB@FILES  btrfs  subvol=/@files,noatime,X-mount.mkdir,compress=zstd:3,autodefrag,space_cache=v2  0 0"
-"LABEL=WD-1TB  /var/mnt/WD-1TB@SEEDS  btrfs  subvol=/@seeds,noatime,X-mount.mkdir,compress=zstd:3,autodefrag,space_cache=v2  0 0"
-"LABEL=WD-1TB  /var/mnt/WD-1TB@STEAM  btrfs  subvol=/@steam,noatime,X-mount.mkdir,autodefrag,space_cache=v2  0 0"
-"UUID=${SAMSUNG_UUID}  /var/mnt/SAMSUNG@STORAGE  btrfs  subvol=/storage,noatime,X-mount.mkdir,ssd,discard=async,space_cache=v2  0 0"
-)
-
-for entry in "${ENTRIES[@]}"; do
-  if grep -Fxq -- "$entry" "$FSTAB"; then
-    echo "Skipping (already exists): $entry"
+  if btrfs subvolume list "$TEMP_MOUNTPOINT" | grep -q "storage"; then
+    echo "Btrfs subvolume '/storage' already exists in UUID ${SAMSUNG_UUID}."
   else
-    echo "$entry" >> "$FSTAB"
-    echo "Added: $entry"
+    echo "Creating Btrfs subvolume '/storage' in UUID ${SAMSUNG_UUID}..."
+    btrfs subvolume create "${TEMP_MOUNTPOINT}/storage"
   fi
-done
 
-echo "Validating fstab..."
-mount -a
+  mkdir -p /var/mnt/SAMSUNG@STORAGE
+  SAMSUNG_ENTRY="UUID=${SAMSUNG_UUID}  /var/mnt/SAMSUNG@STORAGE  btrfs  subvol=/storage,noatime,X-mount.mkdir,ssd,discard=async,space_cache=v2  0 0"
 
-echo "Done updating /etc/fstab"
+  device=$(awk '{print $1}' <<< "$SAMSUNG_ENTRY")
+  mountpoint=$(awk '{print $2}' <<< "$SAMSUNG_ENTRY")
+
+  if grep -Fq "${device}  ${mountpoint}" "$FSTAB"; then
+    echo "'${device} ${mountpoint}' already exists in $FSTAB"
+  else
+    echo "$SAMSUNG_ENTRY" >> "$FSTAB"
+  fi
+  
+  SAMSUNG_SUCCESS=true
+else
+  echo "Cannot find or create the storage subvolume for the Samsung drive. Skipping entry for the Samsung drive."
+fi	
+
+if [[ "$WD_1TB_SUCCESS" == true ]] || [[ "$SAMSUNG_SUCCESS" == true ]]; then
+  echo "Validating new mounts..."
+
+  if [[ "$WD_1TB_SUCCESS" == true ]]; then
+    mount -v /var/mnt/WD-1TB@FILES
+    mount -v /var/mnt/WD-1TB@SEEDS
+    mount -v /var/mnt/WD-1TB@STEAM
+  fi
+
+  if [[ "$SAMSUNG_SUCCESS" == true ]]; then
+    mount -v /var/mnt/SAMSUNG@STORAGE
+  fi
+
+  echo "Done updating /etc/fstab"
+else
+  echo "No entries were added to /etc/fstab."
+fi
+
+exit 0
