@@ -19,4 +19,8 @@ modules:
     nofile-limits: true
     brew-analytics: false
 
+  # - type: script
+  #   snippets:
+  #     - "echo 'source = ./user/scrolling_layout.conf' >> /etc/skel/.config/hypr/hyprland.conf"
+
   - type: signing
