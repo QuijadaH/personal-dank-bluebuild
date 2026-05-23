@@ -17,7 +17,7 @@ failed() {
     exit 1
 }
 
-echo "fastfetch" >> ~/.bashrc || failed
+echo "fastfetch" >> "$HOME"/.bashrc || failed
 
 echo "Successfully added Fastfetch to '~/.bashrc'."
 exit 0

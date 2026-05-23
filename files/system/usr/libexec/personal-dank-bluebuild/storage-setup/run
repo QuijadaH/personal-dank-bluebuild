@@ -21,16 +21,17 @@ if [[ ! -d "$HOME_DIR" ]]; then
 fi
 
 mkdir -p /var/lib/personal-dank-bluebuild
-STATE_FILE="/var/lib/personal-dank-bluebuild/storage-setup.done"
+STATE_FILE="/var/lib/personal-dank-bluebuild/storage-setup/run.completed"
 
 if [[ -f "$STATE_FILE" ]]; then
   echo "Personal storage setup has already been completed. Exiting."
   exit 0
 fi
 
-mv /etc/personal-dank-bluebuild/my-home/* "$HOME_DIR"/
-chown -R 1000:1000 "$HOME_DIR"
-chmod -R 700 "$HOME_DIR"
+if rsync -a /etc/personal-dank-bluebuild/my-home/ "$HOME_DIR"/; then
+  chown -R 1000:1000 "$HOME_DIR"
+  chmod -R 700 "$HOME_DIR"
+fi
 
 FSTAB="/etc/fstab"
 cp "$FSTAB" "${FSTAB}.$(date +%F-%H%M%S).bak"
