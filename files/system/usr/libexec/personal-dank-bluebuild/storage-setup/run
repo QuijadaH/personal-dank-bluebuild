@@ -20,7 +20,7 @@ if [[ ! -d "$HOME_DIR" ]]; then
   exit 1
 fi
 
-mkdir -p /var/lib/personal-dank-bluebuild
+mkdir -p /var/lib/personal-dank-bluebuild/storage-setup
 STATE_FILE="/var/lib/personal-dank-bluebuild/storage-setup/run.completed"
 
 if [[ -f "$STATE_FILE" ]]; then
