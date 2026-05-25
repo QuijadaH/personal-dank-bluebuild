@@ -25,7 +25,10 @@ modules:
 
   - type: default-flatpaks
     configurations:
-      - scope: user
+      - notify: true
+        scope: user
+        repo:
+          title: Flathub (user)
         install: 
           - com.github.wwmm.easyeffects
           - org.equicord.equibop
