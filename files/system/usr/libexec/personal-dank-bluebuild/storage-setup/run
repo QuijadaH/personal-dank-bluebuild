@@ -3,6 +3,7 @@
 set -euo pipefail
 
 LOG_FILE="/var/lib/personal-dank-bluebuild/storage-setup/run.log"
+[[ -f "$LOG_FILE" ]] && rm "$LOG_FILE"
 exec > >(tee -a "$LOG_FILE") 2>&1 || echo "Failed to initialize logging." >&2  
 
 TARGET_UID=1000
@@ -28,10 +29,7 @@ if [[ -f "$STATE_FILE" ]]; then
   exit 0
 fi
 
-if rsync -a /etc/personal-dank-bluebuild/my-home/ "$HOME_DIR"/; then
-  chown -R 1000:1000 "$HOME_DIR"
-  chmod -R 700 "$HOME_DIR"
-fi
+rsync -r --chown="$TARGET_USER:$TARGET_USER" /etc/personal-dank-bluebuild/my-home/ "$HOME_DIR"/ && echo "Copied files from /etc/personal-dank-bluebuild/my-home to $HOME_DIR."
 
 FSTAB="/etc/fstab"
 cp "$FSTAB" "${FSTAB}.$(date +%F-%H%M%S).bak"
@@ -124,32 +122,28 @@ if [[ "$WD_1TB_SUCCESS" == true ]] || [[ "$SAMSUNG_SUCCESS" == true ]]; then
 
       echo "Setting up symlinks for WD-1TB@FILES..."
 
-      rmdir "$HOME_DIR"/Desktop "$HOME_DIR"/Documents "$HOME_DIR"/Downloads "$HOME_DIR"/Music "$HOME_DIR"/Pictures "$HOME_DIR"/Public "$HOME_DIR"/Templates "$HOME_DIR"/Videos 2>/dev/null || true
+      DIRECTORIES=(
+      "Desktop"
+      "Documents"
+      "Downloads"
+      "Music"
+      "Pictures"
+      "Public"
+      "Templates"
+      "Videos"
+      )
+
+      for directory in "${DIRECTORIES[@]}"; do
+        [[ -L "$HOME_DIR/$directory" ]] && unlink "$HOME_DIR/$directory"
+        # shellcheck disable=SC2115
+        [[ -d "$HOME_DIR/$directory" && ! -L "$HOME_DIR/$directory" ]] && rm -r "$HOME_DIR/$directory"
+      done
       echo "Removed existing standard directories in $HOME_DIR (if they existed)."
 
-      ln -s "$HOME_DIR"/.mount/WD-1TB@FILES/Desktop "$HOME_DIR"/Desktop
-      echo "Created symlink: $HOME_DIR/Desktop -> $HOME_DIR/.mount/WD-1TB@FILES/Desktop"
-
-      ln -s "$HOME_DIR"/.mount/WD-1TB@FILES/Documents "$HOME_DIR"/Documents
-      echo "Created symlink: $HOME_DIR/Documents -> $HOME_DIR/.mount/WD-1TB@FILES/Documents"
-
-      ln -s "$HOME_DIR"/.mount/WD-1TB@FILES/Downloads "$HOME_DIR"/Downloads
-      echo "Created symlink: $HOME_DIR/Downloads -> $HOME_DIR/.mount/WD-1TB@FILES/Downloads"
-
-      ln -s "$HOME_DIR"/.mount/WD-1TB@FILES/Music "$HOME_DIR"/Music
-      echo "Created symlink: $HOME_DIR/Music -> $HOME_DIR/.mount/WD-1TB@FILES/Music"
-
-      ln -s "$HOME_DIR"/.mount/WD-1TB@FILES/Pictures "$HOME_DIR"/Pictures
-      echo "Created symlink: $HOME_DIR/Pictures -> $HOME_DIR/.mount/WD-1TB@FILES/Pictures"
-
-      ln -s "$HOME_DIR"/.mount/WD-1TB@FILES/Public "$HOME_DIR"/Public
-      echo "Created symlink: $HOME_DIR/Public -> $HOME_DIR/.mount/WD-1TB@FILES/Public"
-
-      ln -s "$HOME_DIR"/.mount/WD-1TB@FILES/Templates "$HOME_DIR"/Templates
-      echo "Created symlink: $HOME_DIR/Templates -> $HOME_DIR/.mount/WD-1TB@FILES/Templates"
-
-      ln -s "$HOME_DIR"/.mount/WD-1TB@FILES/Videos "$HOME_DIR"/Videos
-      echo "Created symlink: $HOME_DIR/Videos -> $HOME_DIR/.mount/WD-1TB@FILES/Videos"
+      for directory in "${DIRECTORIES[@]}"; do
+        ln -s "$HOME_DIR/.mount/WD-1TB@FILES/$directory" "$HOME_DIR/$directory"
+        echo "Created symlink: $HOME_DIR/$directory -> $HOME_DIR/.mount/WD-1TB@FILES/$directory"
+      done
     fi
 
     if ! mount "$HOME_DIR"/.mount/WD-1TB@SEEDS; then
