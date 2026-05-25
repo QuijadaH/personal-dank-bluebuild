@@ -6,7 +6,7 @@ ConditionPathExists=!/var/lib/personal-dank-bluebuild/storage-setup/run.complete
 
 [Service]
 Type=oneshot
-ExecStart=/usr/libexec/personal-dank-bluebuild/storage-setup
+ExecStart=/usr/libexec/personal-dank-bluebuild/storage-setup/run
 
 [Install]
 WantedBy=multi-user.target

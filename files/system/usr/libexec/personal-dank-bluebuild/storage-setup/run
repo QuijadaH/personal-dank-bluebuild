@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-LOG_FILE="/var/lib/personal-dank-bluebuild/storage-setup.log"
+LOG_FILE="/var/lib/personal-dank-bluebuild/storage-setup/run.log"
 exec > >(tee -a "$LOG_FILE") 2>&1 || echo "Failed to initialize logging." >&2  
 
 TARGET_UID=1000
