@@ -98,7 +98,7 @@ fi
 
 echo "Rsync starting..."
 
-if sudo rsync -ah --info=progress2 "$TEMP_MOUNTPOINT"/@samsung_backup/ "$2"/.mount/SAMSUNG@STORAGE/; then
+if sudo rsync -ah --info=progress2 "$TEMP_MOUNTPOINT"/@samsung_backup/ "$SCRIPT_HOME"/.mount/SAMSUNG@STORAGE/; then
     echo "Successfully restored data from '@samsung_backup' to '~/.mount/SAMSUNG@STORAGE'."
 else
     echo "Failed to restore data from '@samsung_backup' to '~/.mount/SAMSUNG@STORAGE'." >&2
