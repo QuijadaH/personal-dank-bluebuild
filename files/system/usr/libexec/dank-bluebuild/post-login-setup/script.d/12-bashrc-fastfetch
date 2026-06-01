@@ -16,12 +16,13 @@ else
     SCRIPT_HOME="$SUDO_HOME"
 fi
 
-SCRIPT_NAME="$(basename "$0")"
-SCRIPT_STATE="/var/lib/dank-bluebuild/post-login-setup/script.d/$SCRIPT_NAME.completed"
-SCRIPT_HOME_STATE="$SCRIPT_HOME/.local/state/dank-bluebuild/post-login-setup/script.d/$SCRIPT_NAME.completed"
+ACTUAL_SCRIPT_NAME=$(basename "$0")
+CLEANED_SCRIPT_NAME="${ACTUAL_SCRIPT_NAME#[0-9]*-}"
+SCRIPT_STATE="/var/lib/dank-bluebuild/post-login-setup/script.d/$CLEANED_SCRIPT_NAME.completed"
+SCRIPT_HOME_STATE="$SCRIPT_HOME/.local/state/dank-bluebuild/post-login-setup/script.d/$CLEANED_SCRIPT_NAME.completed"
 
 if [ -f "$SCRIPT_STATE" ] || [ -f "$SCRIPT_HOME_STATE" ]; then
-    echo "Script '$SCRIPT_NAME' already completed."
+    echo "Script '$CLEANED_SCRIPT_NAME' already completed."
     exit 0
 fi
 
